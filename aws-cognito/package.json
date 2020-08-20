@@ -1,0 +1,17 @@
+{
+  "name": "aws-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "graphql.js",
+  "dependencies": {
+    "apollo-server-lambda": "^2.16.0",
+    "graphql": "^15.3.0",
+    "serverless-pseudo-parameters": "^2.5.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

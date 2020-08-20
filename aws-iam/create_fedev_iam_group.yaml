@@ -1,0 +1,158 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The CloudFormation template for Creating the IAM User Group with Inline IAM Policy.
+
+Parameters:
+  GroupName:
+    Type: String
+    Default: FEDEvTestGroup
+
+
+Resources:
+  
+  # creating the iam user group
+  IAMUserGroup:
+    Type: AWS::IAM::Group
+    Properties: 
+      GroupName: !Ref GroupName
+
+  # creating the iam user group policy and attaching it to the group
+  IAMUserGroupPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: FEDevPolicy
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action: [
+            'lambda:CreateFunction',
+            'ec2:AuthorizeSecurityGroupIngress',
+            'ec2:DeleteVpcEndpoints',
+            'rds:DescribeGlobalClusters',
+            'cognito-identity:CreateIdentityPool',
+            'ec2:AttachInternetGateway',
+            'lambda:GetFunctionConfiguration',
+            'iam:PutRolePolicy',
+            'rds:CreateDBSubnetGroup',
+            'ec2:DeleteRouteTable',
+            'cloudformation:DescribeStackEvents',
+            'ec2:CreateRoute',
+            'ec2:CreateInternetGateway',
+            'ec2:RevokeSecurityGroupEgress',
+            'cloudformation:UpdateStack',
+            'ec2:DeleteInternetGateway',
+            'lambda:DeleteFunction',
+            'ec2:UnassignPrivateIpAddresses',
+            's3:DeleteObject',
+            'cloudformation:ListStackResources',
+            'rds:DeleteDBInstance',
+            'iam:GetRole',
+            'ec2:CreateTags',
+            'cognito-idp:DeleteUserPoolClient',
+            'ec2:ModifyNetworkInterfaceAttribute',
+            'iam:DeleteRole',
+            'ec2:AssignPrivateIpAddresses',
+            'ec2:DisassociateRouteTable',
+            's3:DeleteBucketPolicy',
+            'ec2:RevokeSecurityGroupIngress',
+            'ec2:CreateNetworkInterface',
+            's3:PutObject',
+            'cognito-idp:CreateUserPoolClient',
+            'cloudformation:DeleteStack',
+            'lambda:PublishVersion',
+            'apigateway:POST',
+            'ec2:CreateSubnet',
+            'ec2:DescribeSubnets',
+            'cloudformation:ValidateTemplate',
+            'ec2:ModifyVpcEndpoint',
+            'cognito-identity:DeleteIdentityPool',
+            'cloudformation:CreateUploadBucket',
+            'cognito-idp:DeleteUserPool',
+            'kms:PutKeyPolicy',
+            'codepipeline:CreatePipeline',
+            'cognito-idp:CreateUserPool',
+            'ec2:CreateVpc',
+            's3:ListBucket',
+            'ec2:DescribeVpcAttribute',
+            'apigateway:DELETE',
+            'iam:PassRole',
+            'ec2:DescribeAvailabilityZones',
+            'iam:DeleteRolePolicy',
+            'rds:CreateDBInstance',
+            'cognito-identity:SetIdentityPoolRoles',
+            'rds:DescribeDBInstances',
+            'kms:CreateKey',
+            'rds:DeleteDBCluster',
+            's3:DeleteBucket',
+            'kms:EnableKeyRotation',
+            'rds:AddTagsToResource',
+            'apigateway:PUT',
+            'kms:GetKeyPolicy',
+            'ec2:DescribeSecurityGroups',
+            'rds:DeleteDBClusterSnapshot',
+            'iam:CreateServiceLinkedRole',
+            'rds:CreateDBCluster',
+            'ec2:DescribeVpcs',
+            'kms:ListAliases',
+            'codebuild:DeleteProject',
+            'rds:DeleteDBClusterParameterGroup',
+            'lambda:RemovePermission',
+            'ec2:DeleteSubnet',
+            'iam:CreateRole',
+            's3:CreateBucket',
+            'cloudformation:DescribeStackResource',
+            'iam:AttachRolePolicy',
+            'ec2:AssociateRouteTable',
+            'ec2:DescribeInternetGateways',
+            'iam:DetachRolePolicy',
+            'codepipeline:GetPipeline',
+            'ec2:DescribeAccountAttributes',
+            'rds:ModifyDBClusterParameterGroup',
+            'apigateway:GET',
+            'ec2:DescribeRouteTables',
+            'rds:DescribeDBSnapshots',
+            'ec2:DeleteNetworkInterface',
+            'ec2:CreateRouteTable',
+            'ec2:DetachInternetGateway',
+            'logs:CreateLogGroup',
+            'codebuild:CreateProject',
+            'cloudformation:DescribeStacks',
+            'rds:DeleteDBSubnetGroup',
+            's3:GetObject',
+            'iam:DeleteServiceLinkedRole',
+            'rds:CreateDBClusterSnapshot',
+            'ec2:DescribeVpcEndpoints',
+            'ec2:DeleteVpc',
+            'rds:CreateDBClusterParameterGroup',
+            'ec2:DeleteTags',
+            'lambda:ListVersionsByFunction',
+            'rds:DescribeDBSubnetGroups',
+            'codepipeline:DeletePipeline',
+            's3:GetBucketPolicy',
+            's3:PutEncryptionConfiguration',
+            's3:GetEncryptionConfiguration',
+            'ec2:DescribeNetworkInterfaces',
+            'kms:ScheduleKeyDeletion',
+            'ec2:CreateSecurityGroup',
+            'kms:DescribeKey',
+            'ec2:ModifyVpcAttribute',
+            'rds:DescribeDBClusterParameters',
+            'ec2:AuthorizeSecurityGroupEgress',
+            'cloudformation:ListStacks',
+            'logs:DescribeLogGroups',
+            'logs:DeleteLogGroup',
+            'lambda:GetFunction',
+            'ec2:DeleteRoute',
+            'cloudformation:GetTemplateSummary',
+            'lambda:AddPermission',
+            'cloudformation:CreateStack',
+            'ec2:CreateVpcEndpoint',
+            'ec2:DeleteSecurityGroup',
+            'rds:DescribeDBClusterSnapshots',
+            's3:PutBucketPolicy',
+            'codepipeline:GetPipelineState',
+            'rds:DescribeAccountAttributes',
+            'rds:DescribeDBClusters',
+            'ssm:PutParameter'
+            ]
+          Resource: '*'
+      Groups: [!Ref 'IAMUserGroup']
