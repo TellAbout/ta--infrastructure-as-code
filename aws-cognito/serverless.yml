@@ -2,29 +2,16 @@ service: tellabout-apollo-serverless
 
 custom:
   currentStage: ${opt:stage, self:provider.stage}
-  region: ${opt:region, 'us-east-1'}
-  vpcName: vpc-#{AWS::AccountId}-${self:custom.currentStage}
-  publicSubnetAName: publicsubnet-a-#{AWS::AccountId}-${self:custom.currentStage}
-  publicSubnetBName: publicsubnet-b-#{AWS::AccountId}-${self:custom.currentStage}
-  dbUserName: ${opt:dbuser}
-  dbPassword: ${opt:dbpassword}
-  dbName: tellaboutdb#{AWS::AccountId}${self:custom.currentStage}
-  dbPort: 5432
-  dbEngineVersion: 11.7
+  region: ${opt:region, 'us-west-2'}
   graphqlPath: graphql
   userpoolname: userpool-#{AWS::AccountId}-${self:custom.currentStage}
   identitypoolname: identitypool_#{AWS::AccountId}_${self:custom.currentStage}
   callbackURL: http://localhost
 
 provider:
+  region: ${self:custom.region}
   name: aws
   runtime: nodejs12.x
-  vpc:
-    securityGroupIds:
-      - !Ref SecurityGroup
-    subnetIds:
-      - !Ref PublicSubnetA
-      - !Ref PublicSubnetB
 
 plugins:
   - serverless-pseudo-parameters
@@ -52,6 +39,17 @@ functions:
           method: get
           cors: true
 
+  hasura_action:
+    handler: actions/hasura_action.actionHandler
+    package:
+      include:
+        - actions/hasura_action.js
+    events:
+      - http:
+          path: hasura_action
+          method: post
+          cors: true
+
   PreTokenGenerationHandler:
     handler: cognito_triggers/pre_token_generation.handler
     package:
@@ -61,153 +59,6 @@ functions:
 # Add VPC and Aurora Postgress
 resources:
   Resources:
-    # Create a VPC
-    VPC:
-      Type: AWS::EC2::VPC
-      Properties:
-        CidrBlock: 172.10.0.0/16
-        EnableDnsHostnames: True
-        EnableDnsSupport: True
-        Tags:
-          - Key: name
-            Value: ${self:custom.vpcName}
-
-    # Create Subnets
-    PublicSubnetA:
-      Type: AWS::EC2::Subnet
-      Properties:
-        CidrBlock: 172.10.1.0/24
-        VpcId: !Ref VPC
-        AvailabilityZone: ${self:custom.region}a
-        Tags:
-          - Key: name
-            Value: ${self:custom.publicSubnetAName}
-
-    PublicSubnetB:
-      Type: AWS::EC2::Subnet
-      Properties:
-        CidrBlock: 172.10.2.0/24
-        VpcId: !Ref VPC
-        AvailabilityZone: ${self:custom.region}b
-        Tags:
-          - Key: name
-            Value: ${self:custom.publicSubnetBName}
-
-    # Create a Route Table. This will contain a route out to Internet Gateway
-    PublicRouteTable:
-      Type: AWS::EC2::RouteTable
-      Properties:
-        VpcId: !Ref VPC
-
-    # Attach Subnet to Route Table
-    SubnetAPublicRouteAssociation:
-      Type: AWS::EC2::SubnetRouteTableAssociation
-      Properties:
-        RouteTableId: !Ref PublicRouteTable
-        SubnetId: !Ref PublicSubnetA
-
-    SubnetBPublicRouteAssociation:
-      Type: AWS::EC2::SubnetRouteTableAssociation
-      Properties:
-        RouteTableId: !Ref PublicRouteTable
-        SubnetId: !Ref PublicSubnetB
-
-    # Create an Internet Gateway
-    InternetGateway:
-      Type: AWS::EC2::InternetGateway
-
-    # Attach the internet gateway to the VPC
-    VPCInternetGatewayAttachment:
-      Type: AWS::EC2::VPCGatewayAttachment
-      Properties:
-        InternetGatewayId: !Ref InternetGateway
-        VpcId: !Ref VPC
-
-    # Create a route out to Internet Gateway
-    PublicRoute:
-      Type: AWS::EC2::Route
-      DependsOn: VPCInternetGatewayAttachment
-      Properties:
-        RouteTableId: !Ref PublicRouteTable
-        DestinationCidrBlock: 0.0.0.0/0
-        GatewayId: !Ref InternetGateway
-
-    # Creat a security group and open port 80 and 443 in bound and out bound
-    SecurityGroup:
-      Type: AWS::EC2::SecurityGroup
-      Properties:
-        GroupDescription: SecurityGroup-#{AWS::AccountId}-${self:custom.currentStage}
-        VpcId: !Ref VPC
-        SecurityGroupIngress:
-          - IpProtocol: tcp
-            FromPort: 80
-            ToPort: 80
-            CidrIp: 0.0.0.0/0
-          - IpProtocol: tcp
-            FromPort: 443
-            ToPort: 443
-            CidrIp: 0.0.0.0/0
-          - IpProtocol: tcp
-            FromPort: ${self:custom.dbPort}
-            ToPort: ${self:custom.dbPort}
-            CidrIp: 0.0.0.0/0
-        SecurityGroupEgress:
-          - IpProtocol: tcp
-            FromPort: 80
-            ToPort: 80
-            CidrIp: 0.0.0.0/0
-          - IpProtocol: tcp
-            FromPort: 443
-            ToPort: 443
-            CidrIp: 0.0.0.0/0
-          - IpProtocol: tcp
-            FromPort: ${self:custom.dbPort}
-            ToPort: ${self:custom.dbPort}
-            CidrIp: 0.0.0.0/0
-
-    DBSubnetGroup:
-      Type: AWS::RDS::DBSubnetGroup
-      Properties:
-        DBSubnetGroupDescription: tellaboutdbsubnetgroup-#{AWS::AccountId}-${self:custom.currentStage}
-        DBSubnetGroupName: tellaboutdbsubnetgroup-#{AWS::AccountId}-${self:custom.currentStage}
-        SubnetIds:
-          - !Ref PublicSubnetA
-          - !Ref PublicSubnetB
-
-    RDSDBClusterParameterGroup:
-      Type: AWS::RDS::DBClusterParameterGroup
-      Properties:
-        Description: tellaboutdbclusterparametergroup-#{AWS::AccountId}-${self:custom.currentStage}
-        Family: aurora-postgresql11
-        Parameters:
-          rds.force_ssl: 1
-
-    RDSCluster:
-      Type: AWS::RDS::DBCluster
-      Properties:
-        Engine: aurora-postgresql
-        EngineVersion: ${self:custom.dbEngineVersion}
-        Port: ${self:custom.dbPort}
-        DatabaseName: ${self:custom.dbName}
-        MasterUsername: ${self:custom.dbUserName}
-        MasterUserPassword: ${self:custom.dbPassword}
-        DBClusterParameterGroupName:
-          Ref: RDSDBClusterParameterGroup
-        DBSubnetGroupName:
-          Ref: DBSubnetGroup
-        VpcSecurityGroupIds:
-          - !Ref SecurityGroup
-
-    RDSDatabase:
-      Type: AWS::RDS::DBInstance
-      Properties:
-        DBInstanceClass: db.t3.medium
-        Engine: aurora-postgresql
-        DBClusterIdentifier: !Ref RDSCluster
-        EngineVersion: ${self:custom.dbEngineVersion}
-        DBInstanceIdentifier: tellaboutdbinstance-#{AWS::AccountId}-${self:custom.currentStage}
-        PubliclyAccessible: true
-
     UserPool:
       Type: "AWS::Cognito::UserPool"
       Properties:
@@ -353,32 +204,32 @@ resources:
         SourceArn: !Sub arn:aws:cognito-idp:${self:custom.region}:#{AWS::AccountId}:userpool/*
 
   Outputs:
-    PostgresURL:
-      Description: "Postgress database connection string"
-      Value: !Join
-        - ""
-        - - "postgresql://"
-          - ${self:custom.dbUserName}
-          - ":"
-          - ${self:custom.dbPassword}
-          - "@"
-          - !GetAtt RDSCluster.Endpoint.Address
-          - "/"
-          - ${self:custom.dbName}
-    ApolloServerURL:
-      Description: "Remote schema URL for Apollo server"
-      Value: !Join
-        - ""
-        - - "https://"
-          - !Ref ApiGatewayRestApi
-          - ".execute-api."
-          - !Ref AWS::Region
-          - "."
-          - !Ref AWS::URLSuffix
-          - "/"
-          - ${self:custom.currentStage}
-          - "/"
-          - ${self:custom.graphqlPath}
+    # PostgresURL:
+    #   Description: "Postgress database connection string"
+    #   Value: !Join
+    #     - ""
+    #     - - "postgresql://"
+    #       - ${self:custom.dbUserName}
+    #       - ":"
+    #       - ${self:custom.dbPassword}
+    #       - "@"
+    #       - !GetAtt RDSCluster.Endpoint.Address
+    #       - "/"
+    #       - ${self:custom.dbName}
+    # ApolloServerURL:
+    #   Description: "Remote schema URL for Apollo server"
+    #   Value: !Join
+    #     - ""
+    #     - - "https://"
+    #       - !Ref ApiGatewayRestApi
+    #       - ".execute-api."
+    #       - !Ref AWS::Region
+    #       - "."
+    #       - !Ref AWS::URLSuffix
+    #       - "/"
+    #       - ${self:custom.currentStage}
+    #       - "/"
+    #       - ${self:custom.graphqlPath}
     UserPoolId:
       Description: "Cognito user pool id"
       Value: !Ref UserPool
