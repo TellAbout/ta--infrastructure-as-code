@@ -3,7 +3,7 @@ exports.handler = (event, context, callback) => {
     console.log('user >>> ' + event.userName);    
 
     const { Client } = require('pg');
-    const connectionString = 'connection string';
+    const connectionString = 'postgres connection url';
     const client = new Client({
       connectionString: connectionString,
       ssl: {
@@ -14,7 +14,8 @@ exports.handler = (event, context, callback) => {
     
     var role = '';
 
-    client.query('select role from authors.writes where name = $1', ['kula'], (err, res) => {
+    // change the cols in select and also the schema and the table. leave $1 as it is since it's paramterized to take the username from cognito
+    client.query('select role from authors.writes where name = $1', [event.userName], (err, res) => {
       if (err) {
         console.log(err.stack)
       } else {

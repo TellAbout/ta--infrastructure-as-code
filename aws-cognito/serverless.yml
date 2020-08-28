@@ -3,7 +3,6 @@ service: tellabout-apollo-serverless
 custom:
   currentStage: ${opt:stage, self:provider.stage}
   region: ${opt:region, 'us-west-2'}
-  graphqlPath: graphql
   userpoolname: userpool-#{AWS::AccountId}-${self:custom.currentStage}
   identitypoolname: identitypool_#{AWS::AccountId}_${self:custom.currentStage}
   callbackURL: http://localhost
@@ -24,32 +23,6 @@ package:
     - "*.*"
 
 functions:
-  graphql:
-    handler: graphql.graphqlHandler
-    package:
-      include:
-        - graphql.js
-    events:
-      - http:
-          path: ${self:custom.graphqlPath}
-          method: post
-          cors: true
-      - http:
-          path: ${self:custom.graphqlPath}
-          method: get
-          cors: true
-
-  hasura_action:
-    handler: actions/hasura_action.actionHandler
-    package:
-      include:
-        - actions/hasura_action.js
-    events:
-      - http:
-          path: hasura_action
-          method: post
-          cors: true
-
   PreTokenGenerationHandler:
     handler: cognito_triggers/pre_token_generation.handler
     package:
@@ -204,32 +177,6 @@ resources:
         SourceArn: !Sub arn:aws:cognito-idp:${self:custom.region}:#{AWS::AccountId}:userpool/*
 
   Outputs:
-    # PostgresURL:
-    #   Description: "Postgress database connection string"
-    #   Value: !Join
-    #     - ""
-    #     - - "postgresql://"
-    #       - ${self:custom.dbUserName}
-    #       - ":"
-    #       - ${self:custom.dbPassword}
-    #       - "@"
-    #       - !GetAtt RDSCluster.Endpoint.Address
-    #       - "/"
-    #       - ${self:custom.dbName}
-    # ApolloServerURL:
-    #   Description: "Remote schema URL for Apollo server"
-    #   Value: !Join
-    #     - ""
-    #     - - "https://"
-    #       - !Ref ApiGatewayRestApi
-    #       - ".execute-api."
-    #       - !Ref AWS::Region
-    #       - "."
-    #       - !Ref AWS::URLSuffix
-    #       - "/"
-    #       - ${self:custom.currentStage}
-    #       - "/"
-    #       - ${self:custom.graphqlPath}
     UserPoolId:
       Description: "Cognito user pool id"
       Value: !Ref UserPool
