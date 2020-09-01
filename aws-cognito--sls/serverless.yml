@@ -1,0 +1,188 @@
+service: tellabout-cognito-serverless
+
+custom:
+  currentStage: ${opt:stage, self:provider.stage}
+  region: ${opt:region, 'us-west-2'}
+  userpoolname: userpool-#{AWS::AccountId}-${self:custom.currentStage}
+  identitypoolname: identitypool_#{AWS::AccountId}_${self:custom.currentStage}
+  callbackURL: http://localhost
+
+provider:
+  region: ${self:custom.region}
+  name: aws
+  runtime: nodejs12.x
+
+plugins:
+  - serverless-pseudo-parameters
+
+package:
+  individually: true
+  exclude:
+    - ".serverless/**"
+    - "cognito_triggers/**"
+    - "*.*"
+
+functions:
+  PreTokenGenerationHandler:
+    handler: cognito_triggers/pre_token_generation.handler
+    package:
+      include:
+        - cognito_triggers/pre_token_generation.js
+
+# Add VPC and Aurora Postgress
+resources:
+  Resources:
+    UserPool:
+      Type: "AWS::Cognito::UserPool"
+      Properties:
+        UserPoolName: ${self:custom.userpoolname}
+        UsernameAttributes:
+          - email
+        AutoVerifiedAttributes:
+          - email
+        UsernameConfiguration:
+          CaseSensitive: false
+        LambdaConfig:
+          PreTokenGeneration: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireNumbers: false
+            RequireSymbols: false
+            RequireUppercase: false
+            RequireLowercase: false
+        AccountRecoverySetting:
+          RecoveryMechanisms:
+            - Name: verified_email
+              Priority: 1
+            - Name: verified_phone_number
+              Priority: 2
+
+    # ------------------------------------------- Creates a User Pool Client --------------------------------------------------
+    UserPoolClient:
+      Type: "AWS::Cognito::UserPoolClient"
+      Properties:
+        ClientName: !Sub ${self:custom.userpoolname}-client
+        GenerateSecret: false
+        SupportedIdentityProviders:
+          - COGNITO
+        CallbackURLs:
+          - ${self:custom.callbackURL}
+        LogoutURLs:
+          - ${self:custom.callbackURL}
+        AllowedOAuthFlowsUserPoolClient: true
+        AllowedOAuthFlows:
+          - code
+          - implicit
+        AllowedOAuthScopes:
+          - phone
+          - email
+          - openid
+          - aws.cognito.signin.user.admin
+          - profile
+        RefreshTokenValidity: 3650
+        ExplicitAuthFlows:
+          - ALLOW_ADMIN_USER_PASSWORD_AUTH
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+        PreventUserExistenceErrors: ENABLED
+        UserPoolId: !Ref UserPool
+
+    # ----------------------------------------- Creates a federeated Identity pool --------------------------------------------
+    IdentityPool:
+      Type: "AWS::Cognito::IdentityPool"
+      Properties:
+        IdentityPoolName: !Sub ${self:custom.identitypoolname}
+        AllowUnauthenticatedIdentities: true
+        CognitoIdentityProviders:
+          - ClientId: !Ref UserPoolClient
+            ProviderName: !GetAtt UserPool.ProviderName
+
+    # ------------------------------------- Assigns roles to the Identity Pool --------------------------------------------
+    IdentityPoolRoleMapping:
+      Type: "AWS::Cognito::IdentityPoolRoleAttachment"
+      Properties:
+        IdentityPoolId: !Ref IdentityPool
+        Roles:
+          authenticated: !GetAtt CognitoAuthorizedRole.Arn
+          unauthenticated: !GetAtt CognitoUnAuthorizedRole.Arn
+
+    # ------------------------------- Create a role for unauthorized acces to AWS resources -----------------------------------
+    CognitoUnAuthorizedRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Federated: "cognito-identity.amazonaws.com"
+              Action:
+                - "sts:AssumeRoleWithWebIdentity"
+              Condition:
+                StringEquals:
+                  "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+                "ForAnyValue:StringLike":
+                  "cognito-identity.amazonaws.com:amr": unauthenticated
+        Policies:
+          - PolicyName: "CognitoUnauthorizedPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "mobileanalytics:PutEvents"
+                    - "cognito-sync:*"
+                  Resource: "*"
+
+    # -------------------------------- Create a role for authorized acces to AWS resources -----------------------------------
+    CognitoAuthorizedRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Federated: "cognito-identity.amazonaws.com"
+              Action:
+                - "sts:AssumeRoleWithWebIdentity"
+              Condition:
+                StringEquals:
+                  "cognito-identity.amazonaws.com:aud": !Ref IdentityPool
+                "ForAnyValue:StringLike":
+                  "cognito-identity.amazonaws.com:amr": authenticated
+        Policies:
+          - PolicyName: "CognitoAuthorizedPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "mobileanalytics:PutEvents"
+                    - "cognito-sync:*"
+                    - "cognito-identity:*"
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action:
+                    - "lambda:InvokeFunction"
+                  Resource: "*"
+    PermissionToInvokePreTokenGeneration:
+      DependsOn: PreTokenGenerationHandlerLambdaFunction
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
+        Action: lambda:InvokeFunction
+        Principal: cognito-idp.amazonaws.com
+        SourceArn: !Sub arn:aws:cognito-idp:${self:custom.region}:#{AWS::AccountId}:userpool/*
+
+  Outputs:
+    UserPoolId:
+      Description: "Cognito user pool id"
+      Value: !Ref UserPool
+    UserPoolClientId:
+      Description: "Cognito user pool client id"
+      Value: !Ref UserPoolClient
+    IdentityPoolId:
+      Description: "Cognito identity pool id"
+      Value: !Ref IdentityPool
