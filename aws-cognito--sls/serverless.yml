@@ -23,11 +23,21 @@ package:
     - "*.*"
 
 functions:
-  PreTokenGenerationHandler:
-    handler: cognito_triggers/pre_token_generation.handler
+  # PreTokenGenerationHandler:
+  #   handler: cognito_triggers/pre_token_generation.handler
+  #   package:
+  #     include:
+  #       - cognito_triggers/pre_token_generation.js
+  CustomMessageHandler:
+    handler: cognito_triggers/custom_message_sign_up.handler
     package:
       include:
-        - cognito_triggers/pre_token_generation.js
+        - cognito_triggers/custom_message_sign_up.js
+  PostConfirmationHandler:
+    handler: cognito_triggers/post_confirmation.handler
+    package:
+      include:
+        - cognito_triggers/post_confirmation.js
 
 # Add VPC and Aurora Postgress
 resources:
@@ -43,7 +53,9 @@ resources:
         UsernameConfiguration:
           CaseSensitive: false
         LambdaConfig:
-          PreTokenGeneration: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
+          #PreTokenGeneration: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
+          CustomMessage: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-CustomMessageHandler
+          PostConfirmation: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PostConfirmationHandler
         Policies:
           PasswordPolicy:
             MinimumLength: 8
@@ -167,14 +179,30 @@ resources:
                   Action:
                     - "lambda:InvokeFunction"
                   Resource: "*"
-    PermissionToInvokePreTokenGeneration:
-      DependsOn: PreTokenGenerationHandlerLambdaFunction
+    # PermissionToInvokePreTokenGeneration:
+    #   DependsOn: PreTokenGenerationHandlerLambdaFunction
+    #   Type: AWS::Lambda::Permission
+    #   Properties:
+    #     FunctionName: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
+    #     Action: lambda:InvokeFunction
+    #     Principal: cognito-idp.amazonaws.com
+    #     SourceArn: !Sub arn:aws:cognito-idp:${self:custom.region}:#{AWS::AccountId}:userpool/*
+    PermissionToInvokeCustomMessage:
+      DependsOn: CustomMessageHandlerLambdaFunction
       Type: AWS::Lambda::Permission
       Properties:
-        FunctionName: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
+        FunctionName: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-CustomMessageHandler
         Action: lambda:InvokeFunction
         Principal: cognito-idp.amazonaws.com
         SourceArn: !Sub arn:aws:cognito-idp:${self:custom.region}:#{AWS::AccountId}:userpool/*
+    PermissionToInvokePostConfirmation:
+      DependsOn: PostConfirmationHandlerLambdaFunction
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PostConfirmationHandler
+        Action: lambda:InvokeFunction
+        Principal: cognito-idp.amazonaws.com
+        SourceArn: !Sub arn:aws:cognito-idp:${self:custom.region}:#{AWS::AccountId}:userpool/*    
 
   Outputs:
     UserPoolId:
