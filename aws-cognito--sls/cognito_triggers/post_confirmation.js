@@ -1,12 +1,9 @@
 // Lambda which gets triggered on insert, and in turns performs a mutation
+var aws = require('aws-sdk');
+var cognitoidentityserviceprovider = new aws.CognitoIdentityServiceProvider({apiVersion: '2016-04-18', region: 'us-west-2'});
 
 const fetch = require('node-fetch');
-
-//const adminSecret = process.env.ADMIN_SECRET;
-//const hgeEndpoint = process.env.HGE_ENDPOINT;
-const hgeEndpoint = 'https://special-rabbit-51.hasura.app';
-
-
+const hgeEndpoint = process.env.HASURA_ENDPOINT_URL;
 const query = `
 mutation createUser ($username: String!) {
   insert_user (objects: [
@@ -23,11 +20,15 @@ mutation createUser ($username: String!) {
 exports.handler = (event, context, callback) => {
     console.log('The event >> ' + JSON.stringify(event));
 
-    const response = {
-        statusCode: 200,
-        body: "success"
+    const response_error = {
+      statusCode: 400,
+      body: JSON.stringify({
+          message: 'Hasura Error'
+      }),
     };
+
     const qv = {username: event.userName};
+    console.log('hasura endpoint - ' + hgeEndpoint);
 
     fetch(hgeEndpoint + '/v1/graphql', {
         method: 'POST',
@@ -37,6 +38,23 @@ exports.handler = (event, context, callback) => {
         .then(res => res.json())
         .then(json => {
             console.log(json);
-            callback(null, response);
+            callback(null, event);
+        })
+        .catch((err) => {
+          // handle error for example
+          console.log(err);
+          var params = {
+            UserPoolId: event.userPoolId, 
+            Username: event.userName
+          };
+
+          cognitoidentityserviceprovider.adminDeleteUser(params, function(err, data) {
+            console.log('Deleting user..');
+            if (err) console.log(err, err.stack); 
+            else     console.log(data);
+          });
+
+          callback(null,response_error);
         });
 };
+

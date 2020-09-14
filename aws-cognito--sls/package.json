@@ -5,6 +5,7 @@
   "main": "graphql.js",
   "dependencies": {
     "apollo-server-lambda": "^2.16.0",
+    "aws-sdk": "^2.751.0",
     "graphql": "^15.3.0",
     "node-fetch": "^2.6.1",
     "pg": "^8.3.2",

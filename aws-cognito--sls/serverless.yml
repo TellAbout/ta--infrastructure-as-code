@@ -11,6 +11,15 @@ provider:
   region: ${self:custom.region}
   name: aws
   runtime: nodejs12.x
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'cognito-idp:AdminDeleteUser'
+      Resource: '*'
+  environment:
+    HASURA_ENDPOINT_URL: ${opt:hasura_url, 'https://special-rabbit-51.hasura.app'}
+    EMAIL_VERIFICATION_PAGE_URL: ${opt:email_ver_url, 'https://example.com/verification_page'}
+    FORGOT_PASSWORD_PAGE_URL: ${opt:forgot_pass_url, 'https://example.com/forgotpassword_page'}
 
 plugins:
   - serverless-pseudo-parameters
