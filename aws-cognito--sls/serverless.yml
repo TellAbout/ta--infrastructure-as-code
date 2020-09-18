@@ -18,7 +18,7 @@ provider:
       Resource: '*'
   environment:
     HASURA_ENDPOINT_URL: ${opt:hasura_url, 'https://special-rabbit-51.hasura.app'}
-    EMAIL_VERIFICATION_PAGE_URL: ${opt:email_ver_url, 'https://example.com/verification_page'}
+    EMAIL_VERIFICATION_PAGE_URL: ${opt:email_ver_url, 'http://localhost:3000/verification'}
     FORGOT_PASSWORD_PAGE_URL: ${opt:forgot_pass_url, 'https://example.com/forgotpassword_page'}
 
 plugins:
@@ -32,11 +32,11 @@ package:
     - "*.*"
 
 functions:
-  # PreTokenGenerationHandler:
-  #   handler: cognito_triggers/pre_token_generation.handler
-  #   package:
-  #     include:
-  #       - cognito_triggers/pre_token_generation.js
+  PreTokenGenerationHandler:
+    handler: cognito_triggers/pre_token_generation.handler
+    package:
+      include:
+        - cognito_triggers/pre_token_generation.js
   CustomMessageHandler:
     handler: cognito_triggers/custom_message_sign_up.handler
     package:
@@ -62,7 +62,7 @@ resources:
         UsernameConfiguration:
           CaseSensitive: false
         LambdaConfig:
-          #PreTokenGeneration: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
+          PreTokenGeneration: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
           CustomMessage: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-CustomMessageHandler
           PostConfirmation: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PostConfirmationHandler
         Policies:
@@ -188,14 +188,14 @@ resources:
                   Action:
                     - "lambda:InvokeFunction"
                   Resource: "*"
-    # PermissionToInvokePreTokenGeneration:
-    #   DependsOn: PreTokenGenerationHandlerLambdaFunction
-    #   Type: AWS::Lambda::Permission
-    #   Properties:
-    #     FunctionName: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
-    #     Action: lambda:InvokeFunction
-    #     Principal: cognito-idp.amazonaws.com
-    #     SourceArn: !Sub arn:aws:cognito-idp:${self:custom.region}:#{AWS::AccountId}:userpool/*
+    PermissionToInvokePreTokenGeneration:
+      DependsOn: PreTokenGenerationHandlerLambdaFunction
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: arn:aws:lambda:${self:custom.region}:#{AWS::AccountId}:function:${self:service.name}-${self:custom.currentStage}-PreTokenGenerationHandler
+        Action: lambda:InvokeFunction
+        Principal: cognito-idp.amazonaws.com
+        SourceArn: !Sub arn:aws:cognito-idp:${self:custom.region}:#{AWS::AccountId}:userpool/*
     PermissionToInvokeCustomMessage:
       DependsOn: CustomMessageHandlerLambdaFunction
       Type: AWS::Lambda::Permission

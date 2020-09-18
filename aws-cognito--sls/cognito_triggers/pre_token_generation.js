@@ -3,7 +3,7 @@ exports.handler = (event, context, callback) => {
     console.log('user >>> ' + event.userName);    
 
     const { Client } = require('pg');
-    const connectionString = 'postgres connection url';
+    const connectionString = 'postgrest connection url';
     const client = new Client({
       connectionString: connectionString,
       ssl: {
@@ -15,23 +15,23 @@ exports.handler = (event, context, callback) => {
     var role = '';
 
     // change the cols in select and also the schema and the table. leave $1 as it is since it's paramterized to take the username from cognito
-    client.query('select role from authors.writes where name = $1', [event.userName], (err, res) => {
+    client.query('select role,id from public.user where username = $1', [event.userName], (err, res) => {
       if (err) {
         console.log(err.stack)
       } else {
           console.log('res'+ JSON.stringify(res));
-          console.log('End time..' + new Date().toLocaleString());
+          
           const data = res.rows;
           data.forEach(row => {
             role = row['role'];
-            console.log(role);
+            hasura_id = row['id']
           });                           
 
           event.response = {
             "claimsOverrideDetails": {
                 "claimsToAddOrOverride": {
-                    "attribute_key2": "attribute_value2",
-                    "userrole": role
+                    "userrole": role,
+                    "hasura_id":hasura_id
                 },
                 "claimsToSuppress": ["email"]
             }
