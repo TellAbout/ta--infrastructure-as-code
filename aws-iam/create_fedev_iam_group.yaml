@@ -152,7 +152,10 @@ Resources:
             'codepipeline:GetPipelineState',
             'rds:DescribeAccountAttributes',
             'rds:DescribeDBClusters',
-            'ssm:PutParameter'
+            'ssm:PutParameter',
+            'lambda:*',
+            'route53:*',
+            'cloudfront:*'
             ]
           Resource: '*'
       Groups: [!Ref 'IAMUserGroup']
