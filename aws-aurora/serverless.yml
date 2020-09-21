@@ -12,7 +12,6 @@ custom:
 provider:
   region: ${self:custom.region}
   name: aws
-  runtime: nodejs12.x
 
 plugins:
   - serverless-pseudo-parameters
