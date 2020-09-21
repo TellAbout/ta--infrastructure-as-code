@@ -1,0 +1,72 @@
+service: tellabout-rds-serverless
+
+custom:
+  currentStage: ${opt:stage, self:provider.stage}
+  region: ${opt:region, 'us-west-2'}
+  dbUserName: ${opt:dbuser}
+  dbPassword: ${opt:dbpassword}
+  dbName: tellaboutdb#{AWS::AccountId}${self:custom.currentStage}
+  dbPort: 5432
+  dbEngineVersion: 11.7
+
+provider:
+  region: ${self:custom.region}
+  name: aws
+  runtime: nodejs12.x
+
+plugins:
+  - serverless-pseudo-parameters
+
+package:
+  individually: true
+  exclude:
+    - ".serverless/**"
+    - "cognito_triggers/**"
+    - "*.*"
+
+# Add Aurora Postgress
+resources:
+  Resources:  
+    RDSDBClusterParameterGroup:
+      Type: AWS::RDS::DBClusterParameterGroup
+      Properties:
+        Description: tellaboutdbclusterparametergroup-#{AWS::AccountId}-${self:custom.currentStage}
+        Family: aurora-postgresql11
+        Parameters:
+          rds.force_ssl: 1
+
+    RDSCluster:
+      Type: AWS::RDS::DBCluster
+      Properties:
+        Engine: aurora-postgresql
+        EngineVersion: ${self:custom.dbEngineVersion}
+        Port: ${self:custom.dbPort}
+        DatabaseName: ${self:custom.dbName}
+        MasterUsername: ${self:custom.dbUserName}
+        MasterUserPassword: ${self:custom.dbPassword}
+        DBClusterParameterGroupName:
+          Ref: RDSDBClusterParameterGroup
+
+    RDSDatabase:
+      Type: AWS::RDS::DBInstance
+      Properties:
+        DBInstanceClass: db.t3.medium
+        Engine: aurora-postgresql
+        DBClusterIdentifier: !Ref RDSCluster
+        EngineVersion: ${self:custom.dbEngineVersion}
+        DBInstanceIdentifier: tellaboutdbinstance-#{AWS::AccountId}-${self:custom.currentStage}
+        PubliclyAccessible: true
+
+  Outputs:
+    PostgresURL:
+      Description: "Postgress database connection string"
+      Value: !Join
+        - ""
+        - - "postgresql://"
+          - ${self:custom.dbUserName}
+          - ":"
+          - ${self:custom.dbPassword}
+          - "@"
+          - !GetAtt RDSCluster.Endpoint.Address
+          - "/"
+          - ${self:custom.dbName}
