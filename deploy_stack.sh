@@ -1,10 +1,72 @@
 #!/bin/bash
 
-echo "executing rds deployment"
-(cd aws-aurora ; sls deploy -v --dbuser tellabout --dbpassword tellabout1234 --stage kula01)
+inputConfigFile="sls.conf"
 
-echo "executing cognito deployment"
-(cd aws-cognito--sls ; sls deploy -v --stage kula01)
+while IFS= read -r line
+do
 
-echo "executing media upload deployment"
-(cd aws-media-upload--sls ; sls deploy -v --stage kula01)
+    if [[ $line == "Stage="* ]]; 
+    then
+        Stage=$(echo $line| cut -d'=' -f 2)
+    fi
+
+    if [[ $line == "AccessKey="* ]]; 
+    then
+        AccessKey=$(echo $line| cut -d'=' -f 2)
+    fi
+
+    if [[ $line == "SecretKey="* ]]; 
+    then
+        SecretKey=$(echo $line| cut -d'=' -f 2)
+    fi
+
+    if [[ $line == "DbUsername="* ]]; 
+    then
+        DbUsername=$(echo $line| cut -d'=' -f 2)
+    fi
+
+    if [[ $line == "DbPassword="* ]]; 
+    then
+        DbPassword=$(echo $line| cut -d'=' -f 2)
+    fi
+
+done < "$inputConfigFile"
+
+if test -z "$Stage" 
+then
+    echo 'Stage not found in '$inputConfigFile' file!'
+    exit
+fi
+
+if test -z "$AccessKey" 
+then
+    echo 'AccessKey not found in '$inputConfigFile' file!'
+    exit
+fi
+
+if test -z "$SecretKey" 
+then
+    echo 'SecretKey not found in '$inputConfigFile' file!'
+    exit
+fi
+
+if test -z "$DbUsername" 
+then
+    echo 'DbUsername not found in '$inputConfigFile' file!'
+    exit
+fi
+
+if test -z "$DbPassword" 
+then
+    echo 'DbPassword not found in '$inputConfigFile' file!'
+    exit
+fi
+
+echo "executing rds deployment...."
+(cd aws-aurora--sls ; npm install ; sls deploy -v --dbuser $DbUsername --dbpassword $DbPassword --stage $Stage)
+
+echo "executing cognito deployment...."
+(cd aws-cognito--sls ; npm install ; sls deploy -v --stage $Stage)
+
+echo "executing media upload deployment...."
+(cd aws-media-upload--sls ; npm install ; sls deploy -v --stage $Stage)
