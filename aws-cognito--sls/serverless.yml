@@ -37,6 +37,8 @@ functions:
     package:
       include:
         - cognito_triggers/pre_token_generation.js
+    environment:
+      POSTGRES_CONNECTION_URL: postgres://
   CustomMessageHandler:
     handler: cognito_triggers/custom_message_sign_up.handler
     package:

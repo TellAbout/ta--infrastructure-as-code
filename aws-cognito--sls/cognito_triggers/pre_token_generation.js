@@ -3,7 +3,7 @@ exports.handler = (event, context, callback) => {
     console.log('user >>> ' + event.userName);    
 
     const { Client } = require('pg');
-    const connectionString = 'postgrest connection url';
+    let connectionString = process.env.POSTGRES_CONNECTION_URL;
     const client = new Client({
       connectionString: connectionString,
       ssl: {
