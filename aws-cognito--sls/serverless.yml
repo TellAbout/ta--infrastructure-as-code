@@ -17,9 +17,9 @@ provider:
         - 'cognito-idp:AdminDeleteUser'
       Resource: '*'
   environment:
-    HASURA_ENDPOINT_URL: ${opt:hasura_url, 'https://special-rabbit-51.hasura.app'}
-    EMAIL_VERIFICATION_PAGE_URL: ${opt:email_ver_url, 'http://localhost:3000/verification'}
-    FORGOT_PASSWORD_PAGE_URL: ${opt:forgot_pass_url, 'https://example.com/forgotpassword_page'}
+    HASURA_ENDPOINT_URL: ${opt:hasura_url, 'https://major-moose-47.hasura.app'}
+    EMAIL_VERIFICATION_PAGE_URL: 'http://localhost:3000/verification'
+    FORGOT_PASSWORD_PAGE_URL: 'http://localhost:4000/forgot-password'
 
 plugins:
   - serverless-pseudo-parameters

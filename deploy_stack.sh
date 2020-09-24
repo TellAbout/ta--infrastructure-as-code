@@ -18,6 +18,11 @@ do
     if [[ $line == "SecretKey="* ]]; 
     then
         SecretKey=$(echo $line| cut -d'=' -f 2)
+    fi  
+    
+    if [[ $line == "HasuraUrl="* ]]; 
+    then
+        HasuraUrl=$(echo $line| cut -d'=' -f 2)       
     fi
 
     if [[ $line == "DbUsername="* ]]; 
@@ -65,8 +70,14 @@ fi
 echo "executing rds deployment...."
 (cd aws-aurora--sls ; npm install ; sls deploy -v --dbuser $DbUsername --dbpassword $DbPassword --stage $Stage)
 
+
 echo "executing cognito deployment...."
-(cd aws-cognito--sls ; npm install ; sls deploy -v --stage $Stage)
+if [ -z "$HasuraUrl" ]
+then
+    (cd aws-cognito--sls ; npm install ; sls deploy -v --stage $Stage)
+else
+    (cd aws-cognito--sls ; npm install ; sls deploy -v --stage $Stage --hasura_url $HasuraUrl)
+fi
 
 echo "executing media upload deployment...."
 (cd aws-media-upload--sls ; npm install ; sls deploy -v --stage $Stage)

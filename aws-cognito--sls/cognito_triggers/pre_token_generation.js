@@ -1,6 +1,6 @@
 exports.handler = (event, context, callback) => {
     context.callbackWaitsForEmptyEventLoop = false;
-    console.log('user >>> ' + event.userName);    
+    console.log('The event >> ' + JSON.stringify(event));
 
     const { Client } = require('pg');
     let connectionString = process.env.POSTGRES_CONNECTION_URL;
@@ -25,15 +25,18 @@ exports.handler = (event, context, callback) => {
           data.forEach(row => {
             role = row['role'];
             hasura_id = row['id']
-          });                           
+          });   
 
           event.response = {
             "claimsOverrideDetails": {
                 "claimsToAddOrOverride": {
-                    "userrole": role,
-                    "hasura_id":hasura_id
-                },
-                "claimsToSuppress": ["email"]
+                    "hasura-id": hasura_id,
+                    "https://hasura.io/jwt/claims": JSON.stringify({
+                    "x-hasura-user-id": event.request.userAttributes.sub,
+                    "x-hasura-default-role": role,
+                    "x-hasura-allowed-roles": [role, "agent"]  //add the other user roles
+                })
+                }
             }
           };
 
