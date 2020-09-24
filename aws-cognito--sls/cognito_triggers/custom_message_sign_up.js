@@ -11,7 +11,6 @@ exports.handler = (event, context, callback) => {
         const userName  = event.userName;
         const { codeParameter } = event.request;
         const hasura_id = event.request.clientMetadata.hasura_id;
-        //const url = 'https://example.com/verification_page';
         const link = `<a href="${verification_page_url}?username=${userName}&code=${codeParameter}&hasura_id=${hasura_id}" target="_blank">here</a>`;
         event.response.emailSubject = "Welcome to the TellABout Service";
         event.response.emailMessage = `Thank you for signing up. Click ${link} to verify your email.`;
@@ -20,7 +19,6 @@ exports.handler = (event, context, callback) => {
         console.log('this is inside the forgot password source....');
         const userName  = event.userName;
         const { codeParameter } = event.request;
-        //const url = 'https://example.com/verification_page';
         const link = `<a href="${forgot_password_page_url}?username=${userName}&code=${codeParameter}" target="_blank">here</a>`;
         event.response.emailSubject = "Welcome to the TellABout Service";
         event.response.emailMessage = `Please click ${link} to reset your password.`;
