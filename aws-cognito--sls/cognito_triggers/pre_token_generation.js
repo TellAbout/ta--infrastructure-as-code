@@ -15,7 +15,7 @@ exports.handler = (event, context, callback) => {
     var role = '';
 
     // change the cols in select and also the schema and the table. leave $1 as it is since it's paramterized to take the username from cognito
-    client.query('select role,id from public.user where username = $1', [event.userName], (err, res) => {
+    client.query('select role,id from public.user where authSystemId = $1', [event.userName], (err, res) => {
       if (err) {
         console.log(err.stack)
       } else {
@@ -34,7 +34,7 @@ exports.handler = (event, context, callback) => {
                     "https://hasura.io/jwt/claims": JSON.stringify({
                     "x-hasura-user-id": event.request.userAttributes.sub,
                     "x-hasura-default-role": role,
-                    "x-hasura-allowed-roles": [role, "agent"]  //add the other user roles
+                    "x-hasura-allowed-roles": [role, "agent","enduser","admin"]  //add the other user roles
                 })
                 }
             }
