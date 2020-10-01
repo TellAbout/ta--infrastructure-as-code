@@ -34,6 +34,11 @@ do
     then
         DbPassword=$(echo $line| cut -d'=' -f 2)
     fi
+    
+    if [[ $line == "VpcId="* ]]; 
+    then
+        VpcId=$(echo $line| cut -d'=' -f 2)
+    fi
 
 done < "$inputConfigFile"
 
@@ -67,8 +72,14 @@ then
     exit
 fi
 
+if test -z "$VpcId" 
+then
+    echo 'VpcId not found in '$inputConfigFile' file!'
+    exit
+fi
+
 echo "executing rds deployment...."
-(cd aws-aurora--sls ; npm install ; sls deploy -v --dbuser $DbUsername --dbpassword $DbPassword --stage $Stage)
+(cd aws-aurora--sls ; npm install ; sls deploy -v --dbuser $DbUsername --dbpassword $DbPassword --stage $Stage --vpcId $VpcId)
 
 
 echo "executing cognito deployment...."
