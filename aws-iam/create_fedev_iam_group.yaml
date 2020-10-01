@@ -155,7 +155,10 @@ Resources:
             'ssm:PutParameter',
             'lambda:*',
             'route53:*',
-            'cloudfront:*'
+            'cloudfront:*',
+            'cognito-identity:*',
+            'cognito-idp:*',
+            'cognito-sync:*'
             ]
           Resource: '*'
       Groups: [!Ref 'IAMUserGroup']
