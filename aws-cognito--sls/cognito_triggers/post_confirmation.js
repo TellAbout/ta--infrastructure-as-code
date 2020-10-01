@@ -18,18 +18,18 @@ exports.handler = (event, context, callback) => {
   if (!event.request.clientMetadata.hasura_id || event.request.clientMetadata.hasura_id.length === 0) {
 
     const insert_query = `
-      mutation createUser ($authSystemId: String!,$userrole: String!) {
+      mutation createUser ($auth_system_id: String!,$userrole: user_role_enum!) {
         insert_user (objects: [
           {
             role: $userrole,  
-            authSystemId: $authSystemId
+            auth_system_id: $auth_system_id
           }
         ]) {
           affected_rows
         }
       }
       `;
-    const insert_params = { authSystemId: event.userName, userrole: event.request.clientMetadata.user_role };
+    const insert_params = { auth_system_id: event.userName, userrole: event.request.clientMetadata.user_role };
     console.log('hasura endpoint - ' + hgeEndpoint);
 
     fetch(hgeEndpoint + '/v1/graphql', {
@@ -62,19 +62,19 @@ exports.handler = (event, context, callback) => {
     console.log("updating anonymous user...");
 
     const update_query = `
-      mutation updateUser($authSystemId: String!,$hasuraId: uuid!,$userRole: user_role_enum!){
+      mutation updateUser($auth_system_id: String!,$hasuraId: uuid!,$userRole: user_role_enum!){
         update_user(
           where: {id: {_eq: $hasuraId}},
           _set: {
             role: $userRole, 
-            authSystemId:$authSystemId
+            auth_system_id:$auth_system_id
           }
         ) {
           affected_rows
         }
       }`;
 
-    const update_params = { authSystemId: event.userName, hasuraId: event.request.clientMetadata.hasura_id, userRole: event.request.clientMetadata.user_role };
+    const update_params = { auth_system_id: event.userName, hasuraId: event.request.clientMetadata.hasura_id, userRole: event.request.clientMetadata.user_role };
 
     fetch(hgeEndpoint + '/v1/graphql', {
       method: 'POST',
@@ -93,4 +93,3 @@ exports.handler = (event, context, callback) => {
       });
   }
 };
-

@@ -18,7 +18,7 @@ provider:
       Resource: '*'
   environment:
     HASURA_ENDPOINT_URL: ${opt:hasura_url, 'https://major-moose-47.hasura.app'}
-    EMAIL_VERIFICATION_PAGE_URL: 'http://localhost:3000/verification'
+    EMAIL_VERIFICATION_PAGE_URL: 'http://localhost:4000/verification'
     FORGOT_PASSWORD_PAGE_URL: 'http://localhost:4000/forgot-password'
 
 plugins:
