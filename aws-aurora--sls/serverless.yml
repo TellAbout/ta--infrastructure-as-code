@@ -8,10 +8,14 @@ custom:
   dbName: tellaboutdb#{AWS::AccountId}${self:custom.currentStage}
   dbPort: 5432
   dbEngineVersion: 11.7
+  vpcId: ${opt:vpcId}
 
 provider:
   region: ${self:custom.region}
   name: aws
+  vpc:
+    securityGroupIds:
+      - !Ref SecurityGroup
 
 plugins:
   - serverless-pseudo-parameters
@@ -25,7 +29,40 @@ package:
 
 # Add Aurora Postgress
 resources:
-  Resources:  
+  Resources: 
+    # Creat a security group and open port 80 and 443 in bound and out bound
+    SecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: SecurityGroup-#{AWS::AccountId}-${self:custom.currentStage}
+        VpcId: ${self:custom.vpcId}
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            CidrIp: 0.0.0.0/0
+          - IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+          - IpProtocol: tcp
+            FromPort: ${self:custom.dbPort}
+            ToPort: ${self:custom.dbPort}
+            CidrIp: 0.0.0.0/0
+        SecurityGroupEgress:
+          - IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            CidrIp: 0.0.0.0/0
+          - IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            CidrIp: 0.0.0.0/0
+          - IpProtocol: tcp
+            FromPort: ${self:custom.dbPort}
+            ToPort: ${self:custom.dbPort}
+            CidrIp: 0.0.0.0/0 
+
     RDSDBClusterParameterGroup:
       Type: AWS::RDS::DBClusterParameterGroup
       Properties:
@@ -45,6 +82,8 @@ resources:
         MasterUserPassword: ${self:custom.dbPassword}
         DBClusterParameterGroupName:
           Ref: RDSDBClusterParameterGroup
+        VpcSecurityGroupIds:
+          - !Ref SecurityGroup
 
     RDSDatabase:
       Type: AWS::RDS::DBInstance
