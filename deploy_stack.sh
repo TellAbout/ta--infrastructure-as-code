@@ -78,17 +78,20 @@ then
     exit
 fi
 
+export AWS_ACCESS_KEY_ID=$AccessKey
+export AWS_SECRET_ACCESS_KEY=$SecretKey
+
 echo "executing rds deployment...."
-(cd aws-aurora--sls ; npm install ; sls deploy -v --dbuser $DbUsername --dbpassword $DbPassword --stage $Stage --vpcId $VpcId)
+(cd aws-aurora--sls ; npm install ; npx serverless deploy -v --dbuser $DbUsername --dbpassword $DbPassword --stage $Stage --vpcId $VpcId)
 
 
 echo "executing cognito deployment...."
 if [ -z "$HasuraUrl" ]
 then
-    (cd aws-cognito--sls ; npm install ; sls deploy -v --stage $Stage)
+    (cd aws-cognito--sls ; npm install ; npx serverless deploy -v --stage $Stage)
 else
-    (cd aws-cognito--sls ; npm install ; sls deploy -v --stage $Stage --hasura_url $HasuraUrl)
+    (cd aws-cognito--sls ; npm install ; npx serverless deploy -v --stage $Stage --hasura_url $HasuraUrl)
 fi
 
 echo "executing media upload deployment...."
-(cd aws-media-upload--sls ; npm install ; sls deploy -v --stage $Stage)
+(cd aws-media-upload--sls ; npm install ; npx serverless deploy -v --stage $Stage)
