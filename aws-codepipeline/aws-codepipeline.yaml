@@ -1,0 +1,179 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The CloudFormation template for the CodePipeline
+
+Parameters:
+  Stage:
+    Type: String
+    Default: staging
+  GithubUserName:
+    Type: String
+    Default: TellAbout
+  GithubRepo:
+    Type: String
+    Default: main-app-system
+  GithubBranch:
+    Type: String
+    Default: SumindaDev
+  GithubOAuthToken:
+    Type: String
+    Default: <GITHUB ACCESS TOKEN>
+  HasuraCloudEndpoint:
+    Type: String
+    Default: <HASURA ENDPOINT>
+  HasuraAdminSecret:
+    Type: String
+    Default: <ADMIN SECRET>
+
+
+Resources:
+  # Create an S3 Bucket to store build artifacts
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join ["-", [!Ref Stage, !Ref "AWS::AccountId", "codepipeline-s3bucket"]]
+
+  # Create Access Role for CodePipeLine
+  CodePipeLineExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+          Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AdministratorAccess"
+
+  # Create Access Role for CodeBuild
+  CodeBuildExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  # Create the BuildProject with required Build information
+  BuildProject:
+    Type: "AWS::CodeBuild::Project"
+    Properties:
+      Name: !Join ["-", [!Ref Stage, !Ref "AWS::AccountId", "CodeBuildProject"]]
+      Description: Demo of CodeBuild with CodeDeploy pipeline.
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                nodejs: 12
+            pre_build:
+              commands:
+                - echo Logging into install phase...
+                - yum update -y
+                - yum install sudo -y
+                - sudo npm install -g hasura-cli --unsafe-perm=true
+            build:
+              commands:
+                - echo Build started
+                - ls
+                - echo -e $setup_nvps >> ../setup_nvps__ver001.conf
+                - cat ../setup_nvps__ver001.conf
+                - chmod +x ./setup.sh
+                - ./setup.sh
+                - chmod +x ./hasura-project-mgt/seeds/seed.sh
+                - chmod +x ./next-js-app--sls/sls_deploy.sh
+                - (cd hasura-project-mgt; hasura migrate apply; hasura metadata apply; ./seeds/seed.sh)
+                - (cd next-js-app--sls; ./sls_deploy.sh)
+            post_build:
+              commands:
+                - echo Build completed on `date`
+      Environment:
+        Type: "LINUX_CONTAINER"
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        EnvironmentVariables:
+        - Name: setup_nvps
+          Value: !Sub |
+            HASURA_CONFIGS_SECTION\n
+            HASURA_PROJECT_ENDPOINT=${HasuraCloudEndpoint}\n
+            HASURA_ADMIN_SECRET=${HasuraAdminSecret}\n
+            \n
+            NEXTJS_CONFIGS_SECTION\n
+            LOCAL_GRAPHQL_URL="locish-foobar-10.hasura.app"\n
+            DEVELOPMENT_GRAPHQL_URL="devish-foobar-20.hasura.app"\n
+            PRODUCTION_GRAPHQL_URL="prodish-foobar-30.hasura.app"\n
+            \n
+            NEXTJS_SLS_CONFIGS_SECTION\n
+            STAGE=${Stage}\n
+            ACCESSKEY=\n
+            SECRETKEY=\n
+            \n
+            REMOTESCHEMA_SLS_CONFIGS_SECTION\n
+            STAGE=${Stage}\n
+            ACCESSKEY=\n
+            SECRETKEY=\n
+            \n
+            ACTIONS_SLS_CONFIGS_SECTION\n
+            STAGE=${Stage}\n
+            ACCESSKEY=\n
+            SECRETKEY=\n
+            \n
+            -(An Empty Line at the end is required for parsing purposes)-\n
+      Artifacts:
+        Type: CODEPIPELINE
+      
+  # Create CodePipeline with 3 stages (Source, Build and Deploy)
+  CodePipeLine:
+    Type: AWS::CodePipeline::Pipeline
+    DependsOn: S3Bucket
+    Properties:
+      ArtifactStore:
+        Location: !Join ["-", [!Ref Stage, !Ref "AWS::AccountId", "codepipeline-s3bucket"]]
+        Type: S3
+      Name: !Join ["-", [!Ref Stage, !Ref "AWS::AccountId", "CodePipeLine"]]
+      RestartExecutionOnUpdate: False
+      RoleArn:
+        Fn::GetAtt: [CodePipeLineExecutionRole, Arn]
+
+      Stages:
+        # Download source code from Github Repo to source-output-artifacts path in S3 Bucket
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: 1
+              Configuration:
+                Repo: !Ref GithubRepo
+                Branch: !Ref GithubBranch
+                Owner: !Ref GithubUserName
+                OAuthToken: !Ref GithubOAuthToken
+              RunOrder: 1
+              OutputArtifacts:
+                - Name: source-output-artifacts
+
+        # Build the project using the BuildProject and Output build artifacts to build-output-artifacts path in S3 Bucket
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              OutputArtifacts:
+                - Name: build-output-artifacts
+              InputArtifacts:
+                - Name: source-output-artifacts
+              Configuration:
+                ProjectName: !Ref BuildProject
+              RunOrder: 1
