@@ -17,6 +17,16 @@ exports.handler = (event, context, callback) => {
     Expires: signedUrlExpireSeconds,
   });
 
-  console.log('presigned url: ', url);    
-  callback(null, url);
+  console.log('presigned url: ', url);  
+  
+  const response = {
+    statusCode: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*', // Required for CORS support to work
+      'Access-Control-Allow-Credentials': true, // Required for cookies, authorization headers with HTTPS
+    },
+    body: JSON.stringify({ filename: 'SampleVideo_1280x720_1mb.mp4',  presigned_url: url}),
+  };
+
+  callback(null, response);
 };

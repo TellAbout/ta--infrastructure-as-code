@@ -5,6 +5,7 @@ custom:
   region: ${opt:region, 'us-west-2'}
   bucketName: tellabout-media-#{AWS::AccountId}-${self:custom.currentStage}
   myDomain: 'localhost'
+  graphqlPath: graphql
 
 provider:
   region: ${self:custom.region}
@@ -35,6 +36,16 @@ functions:
     package:
       include:
         - presigned_url_generation.js
+    events:
+      - http:
+          path: ${self:custom.graphqlPath}
+          method: get
+          cors: true
+          # cors:
+          #   origins:
+          #     - http://example.com
+          #     - http://*.example.com
+          #     - http://example2.com
     environment:
       S3_BUCKET_NAME: ${self:custom.bucketName}
 
