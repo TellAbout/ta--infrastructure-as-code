@@ -89,8 +89,10 @@ Resources:
                 - ./setup.sh
                 - chmod +x ./hasura-project-mgt/seeds/seed.sh
                 - chmod +x ./next-js-app--sls/sls_deploy.sh
-                - (cd hasura-project-mgt; hasura migrate apply; hasura metadata apply; ./seeds/seed.sh)
-                - (cd next-js-app--sls; ./sls_deploy.sh)
+                - (cd hasura-project-mgt; hasura migrate apply || { echo 'Migration Failed!' ; exit 1; }; )
+                - (cd hasura-project-mgt; hasura metadata apply || { echo 'Metadata Apply Failed!' ; exit 1; }; )
+                - ./hasura-project-mgt/seeds/seed.sh
+                - (cd next-js-app--sls; ./sls_deploy.sh )
             post_build:
               commands:
                 - echo Build completed on `date`
