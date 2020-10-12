@@ -1,6 +1,6 @@
 #!/bin/bash
 
-inputConfigFile="sls.conf"
+inputConfigFile="../ta--infrastructure-as-code.conf"
 
 while IFS= read -r line
 do
