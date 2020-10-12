@@ -198,7 +198,7 @@ Resources:
             post_build:
               commands:
                 - echo Build completed on `date`
-                
+
       Environment:
         Type: "LINUX_CONTAINER"
         ComputeType: BUILD_GENERAL1_MEDIUM
