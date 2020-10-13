@@ -23,7 +23,18 @@ Parameters:
   HasuraAdminSecret:
     Type: String
     Default: <ADMIN SECRET>
-
+  CognitoIdentityPoolID:
+    Type: String
+    Default: <IDENTITY POOL ID>
+  CognitoUserPoolID:
+    Type: String
+    Default: <USER POOL ID>
+  CognitoUserPoolWebClientID:
+    Type: String
+    Default: <USER POOL WEB CLIENT ID>
+  CognitoRegion:
+    Type: String
+    Default: us-west-2
 
 Resources:
   # Create an S3 Bucket to store build artifacts
@@ -214,6 +225,11 @@ Resources:
             LOCAL_GRAPHQL_URL="locish-foobar-10.hasura.app"\n
             DEVELOPMENT_GRAPHQL_URL="devish-foobar-20.hasura.app"\n
             PRODUCTION_GRAPHQL_URL="prodish-foobar-30.hasura.app"\n
+            AUTH_IDENTITY_POOL_ID="${CognitoIdentityPoolID}"\n
+            AUTH_REGION="${CognitoRegion}"\n
+            AUTH_IDENTITY_POOL_REGION="${CognitoRegion}"\n
+            AUTH_USER_POOL_ID="${CognitoUserPoolID}"\n
+            AUTH_USER_POOL_WEB_CLIENT_ID="${CognitoUserPoolWebClientID}"\n
             \n
             NEXTJS_SLS_CONFIGS_SECTION\n
             STAGE=${Stage}\n
