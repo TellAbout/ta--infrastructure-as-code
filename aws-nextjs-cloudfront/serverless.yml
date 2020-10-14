@@ -2,3 +2,5 @@
 
 myApp:
  component: "@sls-next/serverless-component"
+
+ 

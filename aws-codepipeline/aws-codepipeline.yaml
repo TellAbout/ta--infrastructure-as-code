@@ -35,6 +35,9 @@ Parameters:
   CognitoRegion:
     Type: String
     Default: us-west-2
+  CloudfrontID:
+    Type: String
+    Default: <NEXTJS CLOUDFRONT ID>
 
 Resources:
   # Create an S3 Bucket to store build artifacts
@@ -235,6 +238,9 @@ Resources:
             STAGE=${Stage}\n
             ACCESSKEY=\n
             SECRETKEY=\n
+            \n
+            NEXTJS_SLS_YML_CONFIGS_SECTION\n
+            CLOUDFRONTID=${CloudfrontID}\n
             \n
             REMOTESCHEMA_SLS_CONFIGS_SECTION\n
             STAGE=${Stage}\n
