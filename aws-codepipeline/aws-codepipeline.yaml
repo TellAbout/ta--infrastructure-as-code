@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: The CloudFormation template for the CodePipeline
+Description: The CloudFormation template for the CodePipeline to Build and deploy a branch
 
 Parameters:
   Stage:
@@ -23,7 +23,21 @@ Parameters:
   HasuraAdminSecret:
     Type: String
     Default: <ADMIN SECRET>
-
+  CognitoIdentityPoolID:
+    Type: String
+    Default: <IDENTITY POOL ID>
+  CognitoUserPoolID:
+    Type: String
+    Default: <USER POOL ID>
+  CognitoUserPoolWebClientID:
+    Type: String
+    Default: <USER POOL WEB CLIENT ID>
+  CognitoRegion:
+    Type: String
+    Default: us-west-2
+  CloudfrontID:
+    Type: String
+    Default: <NEXTJS CLOUDFRONT ID>
 
 Resources:
   # Create an S3 Bucket to store build artifacts
@@ -63,7 +77,7 @@ Resources:
     Type: "AWS::CodeBuild::Project"
     Properties:
       Name: !Join ["-", [!Ref Stage, !Ref "AWS::AccountId", "CodeBuildProject"]]
-      Description: Demo of CodeBuild with CodeDeploy pipeline.
+      Description: CodePipeline to Build and deploy a branch
       ServiceRole: !Ref CodeBuildExecutionRole
       Source:
         Type: CODEPIPELINE
@@ -73,29 +87,132 @@ Resources:
             install:
               runtime-versions:
                 nodejs: 12
+
             pre_build:
               commands:
+                - hasuraMigrationExitCode=IN_PROGRESS
+                - hasuraMetadataExitCode=IN_PROGRESS
+                - hasuraSeedingExitCode=IN_PROGRESS
+                - nextJSDeploymentExitCode=IN_PROGRESS
+                - curl -s "https://img.shields.io/badge/HasuraMigration-InProgress-yellow.svg" > ${GithubBranch}-HasuraMigration.svg
+                - aws s3 cp ${GithubBranch}-HasuraMigration.svg s3://${S3Bucket}/badges/${GithubBranch}-HasuraMigration.svg --acl public-read --cache-control no-cache
+                - curl -s "https://img.shields.io/badge/HasuraMetadata-InProgress-yellow.svg" > ${GithubBranch}-HasuraMetadata.svg
+                - aws s3 cp ${GithubBranch}-HasuraMetadata.svg s3://${S3Bucket}/badges/${GithubBranch}-HasuraMetadata.svg --acl public-read --cache-control no-cache
+                - curl -s "https://img.shields.io/badge/HasuraSeeding-InProgress-yellow.svg" > ${GithubBranch}-HasuraSeeding.svg
+                - aws s3 cp ${GithubBranch}-HasuraSeeding.svg s3://${S3Bucket}/badges/${GithubBranch}-HasuraSeeding.svg --acl public-read --cache-control no-cache
+                - curl -s "https://img.shields.io/badge/NextJSDeployment-InProgress-yellow.svg" > ${GithubBranch}-NextJSDeployment.svg
+                - aws s3 cp ${GithubBranch}-NextJSDeployment.svg s3://${S3Bucket}/badges/${GithubBranch}-NextJSDeployment.svg --acl public-read --cache-control no-cache
                 - echo Logging into install phase...
                 - yum update -y
                 - yum install sudo -y
                 - sudo npm install -g hasura-cli --unsafe-perm=true
+
             build:
               commands:
                 - echo Build started
-                - ls
+                - ls -a
                 - echo -e $setup_nvps >> ../setup_nvps__ver001.conf
                 - cat ../setup_nvps__ver001.conf
                 - chmod +x ./setup.sh
                 - ./setup.sh
                 - chmod +x ./hasura-project-mgt/seeds/seed.sh
                 - chmod +x ./next-js-app--sls/sls_deploy.sh
+                
+                - buildPhase=HasuraMigration
                 - (cd hasura-project-mgt; hasura migrate apply || { echo 'Migration Failed!' ; exit 1; }; )
+                - hasuraMigrationExitCode=$?
+                - |
+                  if [ "$hasuraMigrationExitCode" -eq 0 ] ; then
+                    badge_status=Passing
+                    badge_colour=green
+                    curl -s "https://img.shields.io/badge/$buildPhase-$badge_status-$badge_colour.svg" > ${GithubBranch}-$buildPhase.svg
+                    aws s3 cp ${GithubBranch}-$buildPhase.svg s3://${S3Bucket}/badges/${GithubBranch}-$buildPhase.svg --acl public-read --cache-control no-cache
+                  fi
+
+                - buildPhase=HasuraMetadata
                 - (cd hasura-project-mgt; hasura metadata apply || { echo 'Metadata Apply Failed!' ; exit 1; }; )
+                - hasuraMetadataExitCode=$?
+                - |
+                  if [ "$hasuraMetadataExitCode" -eq 0 ] ; then
+                    badge_status=Passing
+                    badge_colour=green
+                    curl -s "https://img.shields.io/badge/$buildPhase-$badge_status-$badge_colour.svg" > ${GithubBranch}-$buildPhase.svg
+                    aws s3 cp ${GithubBranch}-$buildPhase.svg s3://${S3Bucket}/badges/${GithubBranch}-$buildPhase.svg --acl public-read --cache-control no-cache
+                  fi
+
+                - buildPhase=HasuraSeeding
                 - ./hasura-project-mgt/seeds/seed.sh
+                - hasuraSeedingExitCode=$?
+                - |
+                  if [ "$hasuraSeedingExitCode" -eq 0 ] ; then
+                    badge_status=Passing
+                    badge_colour=green
+                    curl -s "https://img.shields.io/badge/$buildPhase-$badge_status-$badge_colour.svg" > ${GithubBranch}-$buildPhase.svg
+                    aws s3 cp ${GithubBranch}-$buildPhase.svg s3://${S3Bucket}/badges/${GithubBranch}-$buildPhase.svg --acl public-read --cache-control no-cache
+                  fi
+
+                - buildPhase=NextJSDeployment
                 - (cd next-js-app--sls; ./sls_deploy.sh )
+                - nextJSDeploymentExitCode=$?
+                - |
+                  if [ "$nextJSDeploymentExitCode" -eq 0 ] ; then
+                    badge_status=Passing
+                    badge_colour=green
+                    curl -s "https://img.shields.io/badge/$buildPhase-$badge_status-$badge_colour.svg" > ${GithubBranch}-$buildPhase.svg
+                    aws s3 cp ${GithubBranch}-$buildPhase.svg s3://${S3Bucket}/badges/${GithubBranch}-$buildPhase.svg --acl public-read --cache-control no-cache
+                  fi
+
+                - buildPhase=COMPLETED
+
+              finally:
+                - skippedPhase=HasuraMigration
+                - |
+                  if [ "$hasuraMigrationExitCode" = "IN_PROGRESS" ]; then
+                    badge_status=Skipped
+                    badge_colour=lightgrey
+                    curl -s "https://img.shields.io/badge/$skippedPhase-$badge_status-$badge_colour.svg" > ${GithubBranch}-$skippedPhase.svg
+                    aws s3 cp ${GithubBranch}-$skippedPhase.svg s3://${S3Bucket}/badges/${GithubBranch}-$skippedPhase.svg --acl public-read --cache-control no-cache
+                  fi
+
+                - skippedPhase=HasuraMetadata
+                - |
+                  if [ "$hasuraMetadataExitCode" = "IN_PROGRESS" ]; then
+                    badge_status=Skipped
+                    badge_colour=lightgrey
+                    curl -s "https://img.shields.io/badge/$skippedPhase-$badge_status-$badge_colour.svg" > ${GithubBranch}-$skippedPhase.svg
+                    aws s3 cp ${GithubBranch}-$skippedPhase.svg s3://${S3Bucket}/badges/${GithubBranch}-$skippedPhase.svg --acl public-read --cache-control no-cache
+                  fi
+
+                - skippedPhase=HasuraSeeding
+                - |
+                  if [ "$hasuraSeedingExitCode" = "IN_PROGRESS" ]; then
+                    badge_status=Skipped
+                    badge_colour=lightgrey
+                    curl -s "https://img.shields.io/badge/$skippedPhase-$badge_status-$badge_colour.svg" > ${GithubBranch}-$skippedPhase.svg
+                    aws s3 cp ${GithubBranch}-$skippedPhase.svg s3://${S3Bucket}/badges/${GithubBranch}-$skippedPhase.svg --acl public-read --cache-control no-cache
+                  fi
+
+                - skippedPhase=NextJSDeployment
+                - |
+                  if [ "$nextJSDeploymentExitCode" = "IN_PROGRESS" ]; then
+                    badge_status=Skipped
+                    badge_colour=lightgrey
+                    curl -s "https://img.shields.io/badge/$skippedPhase-$badge_status-$badge_colour.svg" > ${GithubBranch}-$skippedPhase.svg
+                    aws s3 cp ${GithubBranch}-$skippedPhase.svg s3://${S3Bucket}/badges/${GithubBranch}-$skippedPhase.svg --acl public-read --cache-control no-cache
+                  fi
+
+                - |
+                  if [ "$buildPhase" != "COMPLETED" ] ; then
+                    badge_status=Failing
+                    badge_colour=red
+                    curl -s "https://img.shields.io/badge/$buildPhase-$badge_status-$badge_colour.svg" > ${GithubBranch}-$buildPhase.svg
+                    aws s3 cp ${GithubBranch}-$buildPhase.svg s3://${S3Bucket}/badges/${GithubBranch}-$buildPhase.svg --acl public-read --cache-control no-cache
+                  fi
+
             post_build:
               commands:
                 - echo Build completed on `date`
+
       Environment:
         Type: "LINUX_CONTAINER"
         ComputeType: BUILD_GENERAL1_MEDIUM
@@ -111,11 +228,19 @@ Resources:
             LOCAL_GRAPHQL_URL="locish-foobar-10.hasura.app"\n
             DEVELOPMENT_GRAPHQL_URL="devish-foobar-20.hasura.app"\n
             PRODUCTION_GRAPHQL_URL="prodish-foobar-30.hasura.app"\n
+            AUTH_IDENTITY_POOL_ID="${CognitoIdentityPoolID}"\n
+            AUTH_REGION="${CognitoRegion}"\n
+            AUTH_IDENTITY_POOL_REGION="${CognitoRegion}"\n
+            AUTH_USER_POOL_ID="${CognitoUserPoolID}"\n
+            AUTH_USER_POOL_WEB_CLIENT_ID="${CognitoUserPoolWebClientID}"\n
             \n
             NEXTJS_SLS_CONFIGS_SECTION\n
             STAGE=${Stage}\n
             ACCESSKEY=\n
             SECRETKEY=\n
+            \n
+            NEXTJS_SLS_YML_CONFIGS_SECTION\n
+            CLOUDFRONTID=${CloudfrontID}\n
             \n
             REMOTESCHEMA_SLS_CONFIGS_SECTION\n
             STAGE=${Stage}\n

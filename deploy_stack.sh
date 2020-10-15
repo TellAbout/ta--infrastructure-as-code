@@ -1,6 +1,6 @@
 #!/bin/bash
 
-inputConfigFile="sls.conf"
+inputConfigFile="../ta--infrastructure-as-code.conf"
 
 while IFS= read -r line
 do
@@ -95,3 +95,6 @@ fi
 
 echo "executing media upload deployment...."
 (cd aws-media-upload--sls ; npm install ; npx serverless deploy -v --stage $Stage)
+
+echo "executing cloudfront deployment...."
+(cd aws-nextjs-cloudfront ; npm install ; npx serverless deploy -v --stage $Stage)
