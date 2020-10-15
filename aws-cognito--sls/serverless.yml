@@ -18,6 +18,7 @@ provider:
       Action:
         - 'cognito-idp:AdminDeleteUser'
         - 'cognito-idp:AdminCreateUser'
+        - 'cognito-idp:AdminSetUserPassword'
       Resource: '*'
   environment:
     HASURA_ENDPOINT_URL: ${opt:hasura_url, 'https://major-moose-47.hasura.app'}
