@@ -150,7 +150,7 @@ Resources:
             HASURA_PROJECT_ENDPOINT=${HasuraCloudEndpoint}\n
             HASURA_ADMIN_SECRET=${HasuraAdminSecret}\n
             SANDBOX_EMAIL_ADDRESS=${SandboxEmailAddress}\n
-            SANBOX_PASSWORD=${SandboxPassword}\n
+            SANDBOX_PASSWORD=${SandboxPassword}\n
             LAMBDA_ENDPOINT=${LambdaEndpoint}\n
             ACCESSKEY=${AwsAccessKey}\n
             SECRETKEY=${AwsSecretKey}\n
