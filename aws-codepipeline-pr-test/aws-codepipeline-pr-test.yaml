@@ -38,6 +38,12 @@ Parameters:
   CloudfrontID:
     Type: String
     Default: <NEXTJS CLOUDFRONT ID>
+  SandboxEmailAddress:
+    Type: String
+    Default: <SANDBOX EMAIL ADDRESS>
+  SandboxPassword:
+    Type: String
+    Default: <SANDBOX PASSWORD>
 
 
 Resources:
@@ -160,6 +166,14 @@ Resources:
             \n
             ACTIONS_SLS_CONFIGS_SECTION\n
             STAGE=${Stage}\n
+            ACCESSKEY=\n
+            SECRETKEY=\n
+            \n
+            SEEDDATA_CONFIGS_SECTION\n
+            HASURA_PROJECT_ENDPOINT=${HasuraCloudEndpoint}\n
+            HASURA_ADMIN_SECRET=${HasuraAdminSecret}\n
+            SANDBOX_EMAIL_ADDRESS=${SandboxEmailAddress}\n
+            SANBOX_PASSWORD=${SandboxPassword}\n
             ACCESSKEY=\n
             SECRETKEY=\n
             \n
