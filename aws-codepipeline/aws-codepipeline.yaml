@@ -273,8 +273,8 @@ Resources:
             SANDBOX_EMAIL_ADDRESS=${SandboxEmailAddress}\n
             SANBOX_PASSWORD=${SandboxPassword}\n
             LAMBDA_ENDPOINT=${LambdaEndpoint}\n
-            ACCESSKEY=\n
-            SECRETKEY=\n
+            ACCESSKEY=${AwsAccessKey}\n
+            SECRETKEY=${AwsSecretKey}\n
             \n
             -(An Empty Line at the end is required for parsing purposes)-\n
       Artifacts:
