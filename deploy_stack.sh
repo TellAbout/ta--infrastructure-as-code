@@ -40,6 +40,11 @@ do
         VpcId=$(echo $line| cut -d'=' -f 2)
     fi
 
+    if [[ $line == "PostgresConnection="* ]]; 
+    then
+        PostgresConnection=$(echo $line| cut -d'=' -f 2)       
+    fi
+
 done < "$inputConfigFile"
 
 if test -z "$Stage" 
@@ -86,12 +91,21 @@ echo "executing rds deployment...."
 
 
 echo "executing cognito deployment...."
-if [ -z "$HasuraUrl" ]
+cognitoDeploymentCMD='(cd aws-cognito--sls; npm install; npx serverless deploy -v --stage $Stage'
+
+if [ -n "$HasuraUrl" ]
 then
-    (cd aws-cognito--sls; npm install; npx serverless deploy -v --stage $Stage)
-else
-    (cd aws-cognito--sls; npm install; npx serverless deploy -v --stage $Stage --hasura_url $HasuraUrl)
+    cognitoDeploymentCMD+=' --hasura_url $HasuraUrl'
 fi
+
+if [ -n "$PostgresConnection" ]
+then
+    cognitoDeploymentCMD+=' --postgres_connection $PostgresConnection'
+fi
+
+cognitoDeploymentCMD+=')'
+
+eval $cognitoDeploymentCMD
 
 echo "executing media upload deployment...."
 (cd aws-media-upload--sls; npm install; npx serverless deploy -v --stage $Stage)
