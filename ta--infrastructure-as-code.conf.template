@@ -5,4 +5,5 @@ HasuraUrl=
 DbUsername=uname
 DbPassword=pwd
 VpcId=
+PostgresConnection=
 
