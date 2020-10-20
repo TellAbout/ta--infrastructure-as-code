@@ -53,6 +53,9 @@ Parameters:
   AwsSecretKey:
     Type: String
     Default: <AWS SECRET KEY>
+  PullRequestID:
+    Type: String
+    Default: <PR ID>
 
 
 Resources:
@@ -111,10 +114,11 @@ Resources:
                 - sudo npm install -g hasura-cli --unsafe-perm=true
             build:
               commands:
+                - buildExitCode=1
                 - echo Build started
                 - git init
                 - git remote add origin https://git:${GithubOAuthToken}@github.com/${GithubUserName}/${GithubRepo}.git
-                - git fetch origin pull/12/head && git checkout -f FETCH_HEAD
+                - git fetch origin pull/${PullRequestID}/head && git checkout -f FETCH_HEAD
                 - git status
                 - ls -a
                 - echo -e $setup_nvps >> ../setup_nvps__ver001.conf
@@ -128,12 +132,22 @@ Resources:
                 - (cd hasura-project-mgt; hasura metadata apply || { echo 'Metadata Apply Failed!' ; exit 1; }; )
                 - ./hasura-project-mgt/seeds/seed.sh
                 - (cd next-js-app--sls; ./sls_deploy.sh )
+                - commitHash=$(git rev-parse HEAD)
+                - echo $commitHash
+                - buildExitCode=0
 
               finally:
-                - buildExitCode=$?
                 - |
                   if [ "$buildExitCode" -eq 0 ]; then
-                    echo COMMIT TO GITHUB PR SAYING BUILD PASSED!
+                    echo Updating Github PR Status as Build Passed.
+                    postDataJson="{\"state\":\"success\",\"description\":\"Build Passed!\",\"context\":\"AWS CodePipeLine Build\"}"
+                    http_response=$(curl --silent -X POST -H "Content-Type: application/json" -H "Accept: application/json" -H "Authorization: token ${GithubOAuthToken}" "https://api.github.com/repos/${GithubUserName}/${GithubRepo}/statuses/$commitHash" --data "$postDataJson")
+                    echo Github Build Status Update: $http_response
+                  else
+                    echo Updating Github PR Status as Build Faled.
+                    postDataJson="{\"state\":\"success\",\"description\":\"Build Failed!\",\"context\":\"AWS CodePipeLine Build\"}"
+                    http_response=$(curl --silent -X POST -H "Content-Type: application/json" -H "Accept: application/json" -H "Authorization: token ${GithubOAuthToken}" "https://api.github.com/repos/${GithubUserName}/${GithubRepo}/statuses/$commitHash" --data "$postDataJson")
+                    echo Github Build Status Update: $http_response
                   fi
                 
             post_build:
@@ -212,13 +226,29 @@ Resources:
 
             build:
               commands:
+                - testingExitCode=1
+                - git init
+                - git remote add origin https://git:${GithubOAuthToken}@github.com/${GithubUserName}/${GithubRepo}.git
+                - git fetch origin pull/${PullRequestID}/head && git checkout -f FETCH_HEAD
+                - git status
+                - ls -a
                 - echo TESTING STARTED
+                - commitHash=$(git rev-parse HEAD)
+                - echo $commitHash
+                - testingExitCode=0
 
               finally:
-                - testingExitCode=$?
                 - |
                   if [ "$testingExitCode" -eq 0 ]; then
-                    echo COMMIT TO GITHUB PR SAYING TESTING PASSED!
+                    echo Updating Github PR Status as Testing Passed.
+                    postDataJson="{\"state\":\"success\",\"description\":\"Testing Passed!\",\"context\":\"AWS CodePipeLine Test\"}"
+                    http_response=$(curl --silent -X POST -H "Content-Type: application/json" -H "Accept: application/json" -H "Authorization: token ${GithubOAuthToken}" "https://api.github.com/repos/${GithubUserName}/${GithubRepo}/statuses/$commitHash" --data "$postDataJson")
+                    echo Github Build Status Update: $http_response
+                  else
+                    echo Updating Github PR Status as Testing Failed.
+                    postDataJson="{\"state\":\"success\",\"description\":\"Testing Failed!\",\"context\":\"AWS CodePipeLine Test\"}"
+                    http_response=$(curl --silent -X POST -H "Content-Type: application/json" -H "Accept: application/json" -H "Authorization: token ${GithubOAuthToken}" "https://api.github.com/repos/${GithubUserName}/${GithubRepo}/statuses/$commitHash" --data "$postDataJson")
+                    echo Github Build Status Update: $http_response
                   fi
                 
             post_build:
