@@ -43,7 +43,7 @@ exports.handler = (event, context, callback) => {
             console.log("an error occured...")
             console.log(err, err.stack); 
             response = {
-              body: JSON.stringify({ Error: err.stack})
+              body: JSON.stringify({ Error: 'Cognito User already exists...'})
             };
             callback(null, response);
           } else {
