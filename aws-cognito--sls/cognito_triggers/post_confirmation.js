@@ -2,94 +2,69 @@
 var aws = require('aws-sdk');
 var cognitoidentityserviceprovider = new aws.CognitoIdentityServiceProvider({ apiVersion: '2016-04-18', region: 'us-west-2' });
 
-const fetch = require('node-fetch');
-const hgeEndpoint = process.env.HASURA_ENDPOINT_URL;
-
-exports.handler = (event, context, callback) => {
+exports.handler = async (event, context, callback) => {
   console.log('The event >> ' + JSON.stringify(event));
 
-  const response_error = {
-    statusCode: 400,
-    body: JSON.stringify({
-      message: 'Hasura Error'
-    }),
+  //pg connection
+  const { Client } = require('pg');
+  let connectionString = process.env.POSTGRES_CONNECTION_URL;  
+  const client = new Client({
+    connectionString: connectionString,
+    ssl: {
+        rejectUnauthorized: false
+    }
+  });
+
+  const cognito_params = {
+    UserPoolId: event.userPoolId,
+    Username: event.userName
   };
 
+  client.connect()
+  .then(result => console.log('connection successful..'))
+  .catch(e => {
+    console.error('connection failed..' + e.stack);
+    callback(null, event);
+  });
+
+
   if (!event.request.clientMetadata.hasura_id || event.request.clientMetadata.hasura_id.length === 0) {
-
-    const insert_query = `
-      mutation createUser ($auth_system_id: String!,$userrole: user_role_enum!) {
-        insert_user (objects: [
-          {
-            role: $userrole,  
-            auth_system_id: $auth_system_id
-          }
-        ]) {
-          affected_rows
-        }
-      }
-      `;
-    const insert_params = { auth_system_id: event.userName, userrole: event.request.clientMetadata.user_role };
-    console.log('hasura endpoint - ' + hgeEndpoint);
-
-    fetch(hgeEndpoint + '/v1/graphql', {
-      method: 'POST',
-      body: JSON.stringify({ query: insert_query, variables: insert_params }),
-      headers: { 'Content-Type': 'application/json', 'X-Hasura-Role': 'user_creator' },
-    })
-      .then(res => res.json())
-      .then(json => {
-        console.log(json);
-        callback(null, event);
-      })
-      .catch((err) => {
-        // handle error for example
-        console.log(err);
-        var cognito_params = {
-          UserPoolId: event.userPoolId,
-          Username: event.userName
-        };
-
-        cognitoidentityserviceprovider.adminDeleteUser(cognito_params, function (err, data) {
-          console.log('Deleting user..');
-          if (err) console.log(err, err.stack);
-          else console.log(data);
-        });
-
-        callback(null, response_error);
+    //insert user record
+    console.log("inserting registered user...");
+    client
+    .query('insert into public.user (auth_system_id,role) values($1,$2)', [event.userName,event.request.clientMetadata.user_role])
+    .then(result => console.log('query executed successfully...' + JSON.stringify(result)))
+    .catch(e => {
+      console.error('something went wrong..' + e.stack);
+      cognitoidentityserviceprovider.adminDeleteUser(cognito_params, function (err, data) {
+        console.log('Deleting user..');
+        if (err) console.log('Error while deleting user', err.stack);
+        else {
+          console.log('Cognito User Deleted');  
+        }      
       });
+    })
+    .then(() => client.end());
+    callback(null, event);
+
   } else {
     console.log("updating anonymous user...");
-
-    const update_query = `
-      mutation updateUser($auth_system_id: String!,$hasuraId: uuid!,$userRole: user_role_enum!){
-        update_user(
-          where: {id: {_eq: $hasuraId}},
-          _set: {
-            role: $userRole, 
-            auth_system_id:$auth_system_id
-          }
-        ) {
-          affected_rows
-        }
-      }`;
-
-    const update_params = { auth_system_id: event.userName, hasuraId: event.request.clientMetadata.hasura_id, userRole: event.request.clientMetadata.user_role };
-
-    fetch(hgeEndpoint + '/v1/graphql', {
-      method: 'POST',
-      body: JSON.stringify({ query: update_query, variables: update_params }),
-      headers: { 'Content-Type': 'application/json', 'X-Hasura-Role': 'user_creator' },
-    })
-      .then(res => res.json())
-      .then(json => {
-        console.log(json);
-        callback(null, event);
-      })
-      .catch((err) => {
-        // handle error for example
-        console.log(err);
-        callback(null, response_error);
+    //update user record
+    client
+    .query('update public.user set auth_system_id = $1, role = $2 where id = $3', 
+    [event.userName,event.request.clientMetadata.user_role,event.request.clientMetadata.hasura_id])
+    .then(result => console.log('query executed successfully...' + JSON.stringify(result)))
+    .catch(e => {
+      console.error('something went wrong..' + e.stack);
+      cognitoidentityserviceprovider.adminDeleteUser(cognito_params, function (err, data) {
+        console.log('Deleting user..');
+        if (err) console.log('Error while deleting user', err.stack);
+        else {
+          console.log('Cognito User Deleted');  
+        }      
       });
+    })
+    .then(() => client.end());
+    callback(null, event);
   }
 };
