@@ -1,11 +1,13 @@
 service: tellabout-cognito-serverless
 
+
 custom:
   currentStage: ${opt:stage, self:provider.stage}
   region: ${opt:region, 'us-west-2'}
   userpoolname: userpool-#{AWS::AccountId}-${self:custom.currentStage}
   identitypoolname: identitypool_#{AWS::AccountId}_${self:custom.currentStage}
   callbackURL: http://localhost
+  createUserPath: createuser
 
 provider:
   region: ${self:custom.region}
@@ -15,12 +17,16 @@ provider:
     - Effect: 'Allow'
       Action:
         - 'cognito-idp:AdminDeleteUser'
+        - 'cognito-idp:AdminCreateUser'
+        - 'cognito-idp:AdminSetUserPassword'
       Resource: '*'
   environment:
     HASURA_ENDPOINT_URL: ${opt:hasura_url, 'https://major-moose-47.hasura.app'}
     EMAIL_VERIFICATION_PAGE_URL: 'http://localhost:4000/verification'
     FORGOT_PASSWORD_PAGE_URL: 'http://localhost:4000/forgot-password'
-
+    COGNITO_USERPOOL_ID: !Ref UserPool
+    POSTGRES_CONNECTION_URL: ${opt:postgres_connection, 'postgres://'}
+    
 plugins:
   - serverless-pseudo-parameters
 
@@ -37,8 +43,6 @@ functions:
     package:
       include:
         - cognito_triggers/pre_token_generation.js
-    environment:
-      POSTGRES_CONNECTION_URL: postgres://
   CustomMessageHandler:
     handler: cognito_triggers/custom_message_sign_up.handler
     package:
@@ -49,6 +53,21 @@ functions:
     package:
       include:
         - cognito_triggers/post_confirmation.js
+  CreateSBUserHandler:
+    handler: cognito_triggers/create_sb_user.handler
+    package:
+      include:
+        - cognito_triggers/create_sb_user.js
+    events:
+      - http:
+          path: ${self:custom.createUserPath}
+          method: post
+          cors: true
+          # cors:
+          #   origins:
+          #     - http://example.com
+          #     - http://*.example.com
+          #     - http://example2.com
 
 # Add VPC and Aurora Postgress
 resources:
@@ -185,6 +204,7 @@ resources:
                     - "mobileanalytics:PutEvents"
                     - "cognito-sync:*"
                     - "cognito-identity:*"
+                    - "cognito-idp:*"
                   Resource: "*"
                 - Effect: "Allow"
                   Action:
@@ -214,6 +234,7 @@ resources:
         Action: lambda:InvokeFunction
         Principal: cognito-idp.amazonaws.com
         SourceArn: !Sub arn:aws:cognito-idp:${self:custom.region}:#{AWS::AccountId}:userpool/*    
+
 
   Outputs:
     UserPoolId:

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-inputConfigFile="sls.conf"
+inputConfigFile="../ta--infrastructure-as-code.conf"
 
 while IFS= read -r line
 do
@@ -38,6 +38,11 @@ do
     if [[ $line == "VpcId="* ]]; 
     then
         VpcId=$(echo $line| cut -d'=' -f 2)
+    fi
+
+    if [[ $line == "PostgresConnection="* ]]; 
+    then
+        PostgresConnection=$(echo $line| cut -d'=' -f 2)       
     fi
 
 done < "$inputConfigFile"
@@ -82,16 +87,31 @@ export AWS_ACCESS_KEY_ID=$AccessKey
 export AWS_SECRET_ACCESS_KEY=$SecretKey
 
 echo "executing rds deployment...."
-(cd aws-aurora--sls ; npm install ; npx serverless deploy -v --dbuser $DbUsername --dbpassword $DbPassword --stage $Stage --vpcId $VpcId)
+(cd aws-aurora--sls; npm install; npx serverless deploy -v --dbuser $DbUsername --dbpassword $DbPassword --stage $Stage --vpcId $VpcId)
 
 
 echo "executing cognito deployment...."
-if [ -z "$HasuraUrl" ]
+cognitoDeploymentCMD='(cd aws-cognito--sls; npm install; npx serverless deploy -v --stage $Stage'
+
+if [ -n "$HasuraUrl" ]
 then
-    (cd aws-cognito--sls ; npm install ; npx serverless deploy -v --stage $Stage)
-else
-    (cd aws-cognito--sls ; npm install ; npx serverless deploy -v --stage $Stage --hasura_url $HasuraUrl)
+    cognitoDeploymentCMD+=' --hasura_url $HasuraUrl'
 fi
 
+if [ -n "$PostgresConnection" ]
+then
+    cognitoDeploymentCMD+=' --postgres_connection $PostgresConnection'
+fi
+
+cognitoDeploymentCMD+=')'
+
+eval $cognitoDeploymentCMD
+
 echo "executing media upload deployment...."
-(cd aws-media-upload--sls ; npm install ; npx serverless deploy -v --stage $Stage)
+(cd aws-media-upload--sls; npm install; npx serverless deploy -v --stage $Stage)
+
+if [ -n "$1" ] && [ $1=="-cloudfront" ]
+then
+    echo "executing cloudfront deployment...."
+    (cd aws-nextjs-cloudfront; npm install; npx serverless)
+fi

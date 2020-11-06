@@ -12,8 +12,9 @@ exports.handler = (event, context, callback) => {
   });
   client.connect();
   
-  var role = '';
-
+  let role = '';
+  let hasura_id='';
+  
   // change the cols in select and also the schema and the table. leave $1 as it is since it's paramterized to take the username from cognito
   client.query('select role,id from public.user where "auth_system_id" = $1', [event.userName], (err, res) => {
     if (err) {
