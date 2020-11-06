@@ -10,7 +10,7 @@ exports.handler = (event, context, callback) => {
   const bucketName = process.env.S3_BUCKET_NAME;  
   const fileName = event.queryStringParameters.fileName;
   var key = 'videos' + '/' + fileName;
-  const signedUrlExpireSeconds = 60 * 5;
+  const signedUrlExpireSeconds = 604800;
     
   const put_url = s3.getSignedUrl('putObject', {
     Bucket: bucketName,
