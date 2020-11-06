@@ -41,6 +41,10 @@ functions:
           path: ${self:custom.graphqlPath}
           method: get
           cors: true
+          request:
+            parameters:
+              querystrings:
+                fileName: true
           # cors:
           #   origins:
           #     - http://example.com
